@@ -8,11 +8,14 @@ st.write("Upload the latest **PropertyLoans.xlsx** or **.csv** file")
 uploaded_file = st.file_uploader("Upload PropertyLoans file", type=["xlsx", "xls", "csv"])
 
 if uploaded_file is not None:
-    # Support both Excel and CSV
-    if uploaded_file.name.endswith(('.xlsx', '.xls')):
+    try:
+        if uploaded_file.name.endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(uploaded_file, engine='openpyxl')
+        else:
+            df = pd.read_csv(uploaded_file)
+    except:
+        # Fallback if engine fails
         df = pd.read_excel(uploaded_file)
-    else:
-        df = pd.read_csv(uploaded_file)
     
     # Clean data
     df['Loan Amount (MM)'] = pd.to_numeric(df['Loan Amount (MM)'], errors='coerce')
@@ -21,7 +24,6 @@ if uploaded_file is not None:
     today = datetime.today()
     df['Months to Maturity'] = ((df['Loan Maturity Date'] - today).dt.days / 30.42).round(1)
     
-    # Filter prospects
     prospects = df[
         (df['Loan Amount (MM)'] > 5) & 
         (df['Months to Maturity'] > 0) & 
@@ -44,15 +46,14 @@ if uploaded_file is not None:
     for owner, group in prospects.groupby('Owner'):
         st.write(f"**{owner}**")
         output_text += f"**{owner}**\n"
-        sorted_group = group.sort_values('Loan Maturity Date')
-        for _, row in sorted_group.iterrows():
+        for _, row in group.sort_values('Loan Maturity Date').iterrows():
             date_str = row['Loan Maturity Date'].strftime('%m/%d/%Y') if pd.notnull(row['Loan Maturity Date']) else "N/A"
             line = f"• {row['Property Name']} ({row.get('City', '')}): ${row['Loan Amount (MM)']:.2f}M, {row['Months to Maturity']} months ({date_str})"
             st.write(line)
             output_text += line + "\n"
         output_text += "\n"
     
-    st.text_area("Copy everything below:", output_text, height=400)
+    st.text_area("Copy the entire list below:", output_text, height=400)
     
     # Download
     csv = prospects.to_csv(index=False)
