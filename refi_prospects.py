@@ -3,25 +3,28 @@ import pandas as pd
 from datetime import datetime
 
 st.title("🏠 ReFi / Sale Prospects Analyzer")
-st.write("Upload **PropertyLoans.xlsx** or **.csv**")
+st.write("Upload **PropertyLoans.xlsx** (preferred) or .csv")
 
-uploaded_file = st.file_uploader("Drag & drop your file here", type=["xlsx", "xls", "csv"])
+uploaded_file = st.file_uploader("Drag & drop your file", type=["xlsx", "xls", "csv"])
 
 if uploaded_file is not None:
     try:
         if uploaded_file.name.lower().endswith(('.xlsx', '.xls')):
-            # Force openpyxl and ignore engine issues
             df = pd.read_excel(uploaded_file, engine='openpyxl')
         else:
-            df = pd.read_csv(uploaded_file)
-    except:
-        # Last resort fallback
+            df = pd.read_csv(uploaded_file, encoding='utf-8')
+    except Exception as e:
         try:
-            df = pd.read_excel(uploaded_file)
+            # Fallbacks
+            if uploaded_file.name.lower().endswith(('.xlsx', '.xls')):
+                df = pd.read_excel(uploaded_file)
+            else:
+                df = pd.read_csv(uploaded_file, encoding='latin1')
         except:
-            df = pd.read_csv(uploaded_file)
+            st.error("Could not read the file. Please save as CSV and try again.")
+            st.stop()
     
-    # Clean columns
+    # Data cleaning
     df['Loan Amount (MM)'] = pd.to_numeric(df['Loan Amount (MM)'], errors='coerce')
     df['Loan Maturity Date'] = pd.to_datetime(df['Loan Maturity Date'], errors='coerce')
     
@@ -42,7 +45,7 @@ if uploaded_file is not None:
     st.dataframe(prospects[['Property Name', 'City', 'Owner', 'Loan Amount (MM)', 
                            'Loan Maturity Date', 'Months to Maturity']], use_container_width=True)
     
-    st.subheader("✅ Formatted List by Owner (Copy-Paste)")
+    st.subheader("✅ Formatted List by Owner (Copy-Paste Ready)")
     
     output_text = ""
     for owner, group in prospects.groupby('Owner'):
@@ -55,10 +58,11 @@ if uploaded_file is not None:
             output_text += line + "\n"
         output_text += "\n"
     
-    st.text_area("Copy the list below:", output_text, height=400)
+    st.text_area("Copy the entire list below:", output_text, height=400)
     
     csv = prospects.to_csv(index=False)
-    st.download_button("📥 Download as CSV", csv, f"refi_prospects_{today.strftime('%Y-%m-%d')}.csv", "text/csv")
+    st.download_button("📥 Download Prospects as CSV", csv, 
+                       f"refi_prospects_{today.strftime('%Y-%m-%d')}.csv", "text/csv")
 
 else:
-    st.info("👆 Upload your PropertyLoans Excel or CSV file")
+    st.info("👆 Upload your PropertyLoans file (Excel preferred)")
