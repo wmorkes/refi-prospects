@@ -3,19 +3,25 @@ import pandas as pd
 from datetime import datetime
 
 st.title("🏠 ReFi / Sale Prospects Analyzer")
-st.write("Upload the latest **PropertyLoans.csv** file")
+st.write("Upload the latest **PropertyLoans.xlsx** or **.csv** file")
 
-uploaded_file = st.file_uploader("Upload PropertyLoans.csv", type=["csv"])
+uploaded_file = st.file_uploader("Upload PropertyLoans file", type=["xlsx", "xls", "csv"])
 
 if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
+    # Support both Excel and CSV
+    if uploaded_file.name.endswith(('.xlsx', '.xls')):
+        df = pd.read_excel(uploaded_file)
+    else:
+        df = pd.read_csv(uploaded_file)
     
+    # Clean data
     df['Loan Amount (MM)'] = pd.to_numeric(df['Loan Amount (MM)'], errors='coerce')
     df['Loan Maturity Date'] = pd.to_datetime(df['Loan Maturity Date'], errors='coerce')
     
     today = datetime.today()
     df['Months to Maturity'] = ((df['Loan Maturity Date'] - today).dt.days / 30.42).round(1)
     
+    # Filter prospects
     prospects = df[
         (df['Loan Amount (MM)'] > 5) & 
         (df['Months to Maturity'] > 0) & 
@@ -46,13 +52,12 @@ if uploaded_file is not None:
             output_text += line + "\n"
         output_text += "\n"
     
-    # Copy button for formatted text
-    st.text_area("Copy the entire list below:", output_text, height=400)
+    st.text_area("Copy everything below:", output_text, height=400)
     
-    # Download CSV
+    # Download
     csv = prospects.to_csv(index=False)
-    st.download_button("📥 Download Full Prospects as CSV", csv, 
+    st.download_button("📥 Download Prospects as CSV", csv, 
                        f"refi_prospects_{today.strftime('%Y-%m-%d')}.csv", "text/csv")
 
 else:
-    st.info("👆 Upload your PropertyLoans.csv file")
+    st.info("👆 Drag and drop your PropertyLoans Excel or CSV file")
