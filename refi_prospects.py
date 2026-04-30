@@ -3,28 +3,26 @@ import pandas as pd
 from datetime import datetime
 
 st.title("🏠 ReFi / Sale Prospects Analyzer")
-st.write("Upload **PropertyLoans.xlsx** (preferred) or .csv")
 
-uploaded_file = st.file_uploader("Drag & drop your file", type=["xlsx", "xls", "csv"])
+st.markdown("""
+**How to use (2 simple steps):**
+1. Open your PropertyLoans file in Excel
+2. File → Save As → Choose **CSV UTF-8** → Save
+3. Drag the .csv file here
+""")
+
+uploaded_file = st.file_uploader("Upload PropertyLoans.csv", type=["csv"])
 
 if uploaded_file is not None:
+    # Robust reading with multiple encoding fallbacks
     try:
-        if uploaded_file.name.lower().endswith(('.xlsx', '.xls')):
-            df = pd.read_excel(uploaded_file, engine='openpyxl')
-        else:
-            df = pd.read_csv(uploaded_file, encoding='utf-8')
-    except Exception as e:
+        df = pd.read_csv(uploaded_file, encoding='utf-8')
+    except:
         try:
-            # Fallbacks
-            if uploaded_file.name.lower().endswith(('.xlsx', '.xls')):
-                df = pd.read_excel(uploaded_file)
-            else:
-                df = pd.read_csv(uploaded_file, encoding='latin1')
+            df = pd.read_csv(uploaded_file, encoding='latin1')
         except:
-            st.error("Could not read the file. Please save as CSV and try again.")
-            st.stop()
+            df = pd.read_csv(uploaded_file, encoding='cp1252')
     
-    # Data cleaning
     df['Loan Amount (MM)'] = pd.to_numeric(df['Loan Amount (MM)'], errors='coerce')
     df['Loan Maturity Date'] = pd.to_datetime(df['Loan Maturity Date'], errors='coerce')
     
@@ -41,12 +39,7 @@ if uploaded_file is not None:
     
     st.success(f"Found **{len(prospects)}** good prospects")
     
-    st.subheader("Top Prospects")
-    st.dataframe(prospects[['Property Name', 'City', 'Owner', 'Loan Amount (MM)', 
-                           'Loan Maturity Date', 'Months to Maturity']], use_container_width=True)
-    
-    st.subheader("✅ Formatted List by Owner (Copy-Paste Ready)")
-    
+    st.subheader("Formatted List by Owner")
     output_text = ""
     for owner, group in prospects.groupby('Owner'):
         st.write(f"**{owner}**")
@@ -58,11 +51,10 @@ if uploaded_file is not None:
             output_text += line + "\n"
         output_text += "\n"
     
-    st.text_area("Copy the entire list below:", output_text, height=400)
+    st.text_area("Copy this list:", output_text, height=500)
     
     csv = prospects.to_csv(index=False)
-    st.download_button("📥 Download Prospects as CSV", csv, 
-                       f"refi_prospects_{today.strftime('%Y-%m-%d')}.csv", "text/csv")
+    st.download_button("📥 Download as CSV", csv, f"prospects_{today.strftime('%Y-%m-%d')}.csv", "text/csv")
 
 else:
-    st.info("👆 Upload your PropertyLoans file (Excel preferred)")
+    st.info("👆 Upload the CSV file after saving from Excel as 'CSV UTF-8'")
